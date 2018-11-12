@@ -1,0 +1,12 @@
+# Folders
+/.idea/
+/target/
+/lib/
+/results/
+
+# Files
+.profile
+
+# System Files
+.DS_Store
+Thumbs.db
