@@ -19,32 +19,49 @@ class BasicSimulation extends Simulation {
 
 	val headers_6 = Map("Origin" -> "http://computer-database.gatling.io")
 
-	val scn = scenario("BasicSimulation")
-		.exec(http("/GET Request to Macbook")
-			.get("/computers?f=macbook"))
-		.pause(2)
-		.exec(http("/GET Request to see Edit computer Mac")
-			.get("/computers/6"))
-		.pause(4)
-		.exec(http("/GET Request to see first computers")
+	object Browse {
+		val browse = exec(http("/GET Request to see first computers")
 			.get("/"))
-		.pause(5)
-		.exec(http("/GET Request to see next page")
-			.get("/computers?p=1"))
-		.pause(2)
-		.exec(http("/GET Request to see next to next page")
-			.get("/computers?p=2"))
-		.pause(2)
-		.exec(http("/GET Request to see Amiga Computer")
-			.get("/computers/71"))
-		.pause(3)
-		.exec(http("/POST Request to success edit computer")
-			.post("/computers/71")
-			.headers(headers_6)
-			.formParam("name", "Amiga 1500 Teste")
-			.formParam("introduced", "")
-			.formParam("discontinued", "")
-			.formParam("company", "6"))
+			.pause(5)
+	}
 
-	setUp(scn.inject(atOnceUsers(5))).protocols(httpProtocol)
+	object Edit {
+		val edit = exec(http("/GET Request to see Amiga Computer")
+			.get("/computers/71"))
+			.pause(3)
+			.exec(http("/POST Request to success edit computer")
+				.post("/computers/71")
+				.headers(headers_6)
+				.formParam("name", "Amiga 1500 Teste")
+				.formParam("introduced", "")
+				.formParam("discontinued", "")
+				.formParam("company", "6"))
+	}
+
+	object Search {
+
+		val feeder = csv("./data/search.csv").random // 1, 2
+
+		val search = exec(http("Home")
+			.get("/"))
+			.pause(1)
+			.feed(feeder) // 3
+			.exec(http("Search")
+			.get("/computers?f=${searchCriterion}") // 4
+			.check(css("a:contains('${searchComputerName}')", "href").saveAs("computerURL"))) // 5
+			.pause(1)
+			.exec(http("Select")
+				.get("${computerURL}")) // 6
+			.pause(1)
+	}
+
+//	val scn = scenario("Scenario Name").exec(Search.search, Browse.browse, Edit.edit)
+
+	val users = scenario("Users").exec(Search.search, Browse.browse)
+	val admins = scenario("Admins").exec(Search.search, Browse.browse, Edit.edit)
+
+	setUp(
+		users.inject(rampUsers(10) during (10 seconds)),
+		admins.inject(rampUsers(2) during (10 seconds))
+	).protocols(httpProtocol)
 }
